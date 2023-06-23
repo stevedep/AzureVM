@@ -1,6 +1,7 @@
+Connect-AzAccount -Identity
+
 $rgname ="RG2-VM"
 $vmname ="VM2"
-
 
 Start-AzVM -ResourceGroupName $rgname -Name $vmname
 
@@ -11,8 +12,6 @@ Write-Output $run.Value[0]
 Remove-Item -Path ScriptToRun.sh
 
 Stop-AzVM -ResourceGroupName $rgname -Name $vmname -Force 
-
-Connect-AzAccount -Identity
 $vaultn = "kv-scarping"
 
 Try { $TenantId = Get-AzKeyVaultSecret -VaultName $vaultn -Name "TenantId" -AsPlainText }
