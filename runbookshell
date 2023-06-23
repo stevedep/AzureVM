@@ -1,0 +1,91 @@
+$rgname ="RG2-VM"
+$vmname ="VM2"
+
+
+Start-AzVM -ResourceGroupName $rgname -Name $vmname
+
+$ScriptToRun = "/home/Steve/Documents/Scrape.sh"
+Out-File -InputObject $ScriptToRun -FilePath ScriptToRun.sh
+$run = Invoke-AzVMRunCommand -ResourceGroupName $rgname -Name $vmname -CommandId 'RunShellScript' -ScriptPath ScriptToRun.sh
+Write-Output $run.Value[0]
+Remove-Item -Path ScriptToRun.sh
+
+Stop-AzVM -ResourceGroupName $rgname -Name $vmname -Force 
+
+Connect-AzAccount -Identity
+$vaultn = "kv-scarping"
+
+Try { $TenantId = Get-AzKeyVaultSecret -VaultName $vaultn -Name "TenantId" -AsPlainText }
+Catch {    # Catch any error
+    Write-Output "An error occurred:"
+    Write-Output $_
+}
+Finally { Write-Output "Finally Tenant" + $TenantId }
+
+Try { $AppId = Get-AzKeyVaultSecret -VaultName $vaultn -Name "ClientId" -AsPlainText  } # Secret from Service Principal 
+Catch {    # Catch any error
+    Write-Output "An error occurred:"
+    Write-Output $_
+}
+Finally { Write-Output "Finally Appid" + $AppId }
+
+
+Try { $Secret = Get-AzKeyVaultSecret -VaultName $vaultn -Name "ClientSecret" -AsPlainText  } # Secret from Service Principal 
+Catch {    # Catch any error
+    Write-Output "An error occurred:"
+    Write-Output $_
+}
+Finally { Write-Output "Finally Secret" + $Secret }
+
+Try { $GroupId   = Get-AzKeyVaultSecret -VaultName $vaultn -Name "GroupId" -AsPlainText }  # Workspace ID
+Catch {    # Catch any error
+    Write-Output "An error occurred:"
+    Write-Output $_
+}
+Finally { Write-Output "Finally group" + $GroupId }
+
+Try { $DatasetId = Get-AzKeyVaultSecret -VaultName $vaultn -Name "DatasetId" -AsPlainText }
+Catch {    # Catch any error
+    Write-Output "An error occurred:"
+    Write-Output $_
+}
+Finally { Write-Output "Finally dataset" + $DatasetId }
+
+Try { $DatasetId = Get-AzKeyVaultSecret -VaultName $vaultn -Name "DatasetId" -AsPlainText }
+Catch {    # Catch any error
+    Write-Output "An error occurred:"
+    Write-Output $_
+}
+Finally { Write-Output "Finally dataset" + $DatasetId }
+
+Try { 
+        # Connect the Service Principal
+        $password = ConvertTo-SecureString $Secret -AsPlainText -Force
+        $Creds = New-Object PSCredential $AppId, $password
+        $Result = Connect-PowerBIServiceAccount -ServicePrincipal -Credential $Creds -Tenant $TenantId
+    }
+Catch {    # Catch any error
+    Write-Output "An error occurred:"
+    Write-Output $_
+}
+Finally { Write-Output "Finally connect" + $Result }
+
+Try { $headers = Get-PowerBIAccessToken }
+Catch {    # Catch any error
+    Write-Output "An error occurred:"
+    Write-Output $_
+}
+Finally { Write-Output "Header:" + $headers }
+
+
+# Refresh the dataset
+$uri = "https://api.powerbi.com/v1.0/myorg/groups/$GroupId/datasets/$DatasetId/refreshes"
+Invoke-RestMethod -Uri $uri –Headers $headers –Method POST –Verbose
+
+Disconnect-PowerBIServiceAccount
+
+
+# Check the refresh history
+$uri = "https://api.powerbi.com/v1.0/myorg/groups/$GroupId/datasets/$DatasetId/refreshes?$top=2"
+Invoke-RestMethod -Uri $uri –Headers $headers –Method GET –Verbose | ConvertTo-Json | ConvertFrom-Json | Select -ExpandProperty value | Select id, refreshType, startTime, endTime, status
+
