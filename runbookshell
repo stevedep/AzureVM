@@ -50,13 +50,6 @@ Catch {    # Catch any error
 }
 Finally { Write-Output "Finally dataset" + $DatasetId }
 
-Try { $DatasetId = Get-AzKeyVaultSecret -VaultName $vaultn -Name "DatasetId" -AsPlainText }
-Catch {    # Catch any error
-    Write-Output "An error occurred:"
-    Write-Output $_
-}
-Finally { Write-Output "Finally dataset" + $DatasetId }
-
 Try { 
         # Connect the Service Principal
         $password = ConvertTo-SecureString $Secret -AsPlainText -Force
